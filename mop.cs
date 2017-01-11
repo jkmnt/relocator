@@ -27,7 +27,7 @@ namespace Relocator
         //--- mop properties
 
         protected CBValue<double> _clearance_plane;
-        protected int[] _primitive_ids;
+        protected int[] _primitive_ids = {};
 
         //--- invisible and non-serializable properties
 
@@ -70,6 +70,62 @@ namespace Relocator
             set { }
         }
 
+        [XmlIgnore, Browsable(false)]
+        public new CBValue<double> CutFeedrate
+        {
+            get { return new CBValue<double>(); }
+            set { }
+        }
+
+        [XmlIgnore, Browsable(false)]
+        public new CBValue<double> PlungeFeedrate
+        {
+            get { return new CBValue<double>(); }
+            set { }
+        }
+
+        [XmlIgnore, Browsable(false)]
+        public new CBValue<Point3F> StartPoint
+        {
+            get { return new CBValue<Point3F>(); }
+            set { }
+        }
+
+        [XmlIgnore, Browsable(false)]
+        public new CBValue<RoughingFinishingOptions> RoughingFinishing
+        {
+            get { return new CBValue<RoughingFinishingOptions>(); }
+            set { }
+        }
+
+        [XmlIgnore, Browsable(false)]
+        public new CBValue<double> MaxCrossoverDistance
+        {
+            get { return new CBValue<double>(); }
+            set { }
+        }
+
+        [XmlIgnore, Browsable(false)]
+        public new CBValue<int> ToolNumber
+        {
+            get { return new CBValue<int>(0); }
+            set { }
+        }
+
+        [XmlIgnore, Browsable(false)]
+        public new CBValue<double> ToolDiameter
+        {
+            get { return new CBValue<double>(0.0); }
+            set { }
+        }
+
+        [XmlIgnore, Browsable(false)]
+        public new CBValue<ToolProfiles> ToolProfile
+        {
+            get { return new CBValue<ToolProfiles>(); }
+            set { }
+        }
+
         //-- styleable properties
 
         [Category("Cutting Depth"), DefaultValue(typeof(CBValue<double>), "Default"), Description("The 'safe' Z location to return before a rapid to a new location."), DisplayName("Clearance Plane")]
@@ -106,7 +162,7 @@ namespace Relocator
 
         public override void PostProcess(MachineOpToGCode gcg)
         {
-            double level = _clearance_plane.Cached;
+            double level = Math.Max(_clearance_plane.Cached, gcg._gcode.Z);
 
             gcg.AppendRapid(double.NaN, double.NaN, level);
 
@@ -130,8 +186,6 @@ namespace Relocator
 
         public override void Paint(ICADView iv, Display3D d3d, Color arccolor, Color linecolor, bool selected)
         {
-            double level = _clearance_plane.Cached;
-
             // XXX: what this line for ?
             base._CADFile = iv.CADFile;
 
@@ -139,17 +193,30 @@ namespace Relocator
             MachineOp prev_mop = get_prev_mop(all_mops);
             MachineOp next_mop = get_next_mop(all_mops);
 
+            // make sure we're not going down below clearance of the prev op
+            double level = _clearance_plane.Cached;
+
+            if (prev_mop != null)
+            {
+                if (prev_mop is MOPFromGeometry)
+                    level = Math.Max(level, ((MOPFromGeometry)prev_mop).ClearancePlane.Cached);
+                else if (prev_mop is MOPRelocator)
+                    level = Math.Max(level, ((MOPRelocator)prev_mop).ClearancePlane.Cached);
+            }
+
             // paint all startpoints. starpoint of the next op (out end) is painted selected if we're selected
             d3d.LineColor = Color.Orange;
             d3d.ModelTransform = Matrix4x4F.Identity;
 
             foreach (MachineOp mop in all_mops)
             {
+                if (mop == this) continue;
+
                 Point3F pt = mop.GetInitialCutPoint();
                 if (pt.IsUndefined)
                     continue;
 
-                d3d.LineWidth = (mop == prev_mop && selected) ? 2F : 1F;
+                d3d.LineWidth = (mop == next_mop && selected) ? 2F : 1F;
                 d3d.DrawIcon(pt, Display3DIcons.Circle, 10f);
             }
 
@@ -284,6 +351,11 @@ namespace Relocator
             {
                 base._GenerateToolpathsFinal();
             }
+        }
+
+        public override MachineOp Clone()
+        {
+        	return new MOPRelocator(this);
         }
 
         public MOPRelocator(MOPRelocator src) : base(src)
