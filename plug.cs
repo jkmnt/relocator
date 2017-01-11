@@ -40,12 +40,7 @@ namespace Relocator
     {
 
         private static void mop_onclick(object sender, EventArgs ars)
-        {
-            if (!PolylineUtils.ConfirmSelected(CamBamUI.MainUI.ActiveView))
-            {
-                return;
-            }
-
+        {            
             MOPRelocator mop = new MOPRelocator(CamBamUI.MainUI.ActiveView.CADFile, CamBamUI.MainUI.ActiveView.Selection);
             CamBamUI.MainUI.InsertMOP(mop);
         }

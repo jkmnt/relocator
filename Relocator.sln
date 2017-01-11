@@ -7,20 +7,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Relocator", "Relocator.cspr
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Debug|x86 = Debug|x86
-		Release|Any CPU = Release|Any CPU
-		Release|x86 = Release|x86
+		cb098-debug|x86 = cb098-debug|x86
+		cb10-debug|x86 = cb10-debug|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{65686D43-ED6E-4DC7-818C-E634718648AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{65686D43-ED6E-4DC7-818C-E634718648AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{65686D43-ED6E-4DC7-818C-E634718648AC}.Debug|x86.ActiveCfg = Debug|x86
-		{65686D43-ED6E-4DC7-818C-E634718648AC}.Debug|x86.Build.0 = Debug|x86
-		{65686D43-ED6E-4DC7-818C-E634718648AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{65686D43-ED6E-4DC7-818C-E634718648AC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{65686D43-ED6E-4DC7-818C-E634718648AC}.Release|x86.ActiveCfg = Release|Any CPU
-		{65686D43-ED6E-4DC7-818C-E634718648AC}.Release|x86.Build.0 = Release|Any CPU
+		{65686D43-ED6E-4DC7-818C-E634718648AC}.cb098-debug|x86.ActiveCfg = cb098-debug|x86
+		{65686D43-ED6E-4DC7-818C-E634718648AC}.cb098-debug|x86.Build.0 = cb098-debug|x86
+		{65686D43-ED6E-4DC7-818C-E634718648AC}.cb10-debug|x86.ActiveCfg = cb10-debug|x86
+		{65686D43-ED6E-4DC7-818C-E634718648AC}.cb10-debug|x86.Build.0 = cb10-debug|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
