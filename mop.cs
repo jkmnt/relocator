@@ -162,9 +162,13 @@ namespace Relocator
 
         public override void PostProcess(MachineOpToGCode gcg)
         {
+            Point3F offset = new Point3F(0,0,0);
+            gcg.ApplyGCodeOrigin(ref offset);
+            _start = new Point3F(gcg._gcode.X, gcg._gcode.Y, gcg._gcode.Z) - offset;
+
             double level = Math.Max(_clearance_plane.Cached, gcg._gcode.Z);
 
-            gcg.AppendRapid(double.NaN, double.NaN, level);
+            gcg.AppendRapid(gcg._gcode.X, gcg._gcode.Y, level);
 
             foreach (Point2F pt in _nodes)
             {
@@ -193,15 +197,11 @@ namespace Relocator
             MachineOp prev_mop = get_prev_mop(all_mops);
             MachineOp next_mop = get_next_mop(all_mops);
 
-            // make sure we're not going down below clearance of the prev op
             double level = _clearance_plane.Cached;
 
-            if (prev_mop != null)
+            if (! _start.IsUndefined)
             {
-                if (prev_mop is MOPFromGeometry)
-                    level = Math.Max(level, ((MOPFromGeometry)prev_mop).ClearancePlane.Cached);
-                else if (prev_mop is MOPRelocator)
-                    level = Math.Max(level, ((MOPRelocator)prev_mop).ClearancePlane.Cached);
+                level = Math.Max(level, _start.Z);
             }
 
             // paint all startpoints. starpoint of the next op (out end) is painted selected if we're selected
@@ -222,13 +222,6 @@ namespace Relocator
 
             // collect rapids and paint 'em
             Polyline p = new Polyline();
-
-            if (_start.IsUndefined && prev_mop != null)
-            {
-                List<Polyline> outlines = prev_mop.GetOutlines();
-                if (outlines != null && outlines.Count > 0)
-                    _start = outlines[outlines.Count - 1].LastPoint;
-            }
 
             if (! _start.IsUndefined)
             {
