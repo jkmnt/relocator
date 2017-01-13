@@ -17,7 +17,7 @@ using CamBam;
 namespace Relocator
 {
     [Serializable]
-    public class MOPRelocator : MachineOp, IIcon
+    public class MOPRelocator : MOPFromGeometry, IIcon
     {
         [NonSerialized]
         private List<Point2F> _nodes = new List<Point2F>();
@@ -25,9 +25,7 @@ namespace Relocator
         private Point3F _start = Point3F.Undefined;
 
         //--- mop properties
-
-        protected CBValue<double> _clearance_plane;
-        protected int[] _primitive_ids = {};
+        protected double _move_feedrate = 0;
 
         //--- invisible and non-serializable properties
 
@@ -99,47 +97,31 @@ namespace Relocator
         }
 
         [XmlIgnore, Browsable(false)]
-        public new CBValue<double> MaxCrossoverDistance
-        {
-            get { return new CBValue<double>(); }
-            set { }
-        }
-
-        [XmlIgnore, Browsable(false)]
-        public new CBValue<int> ToolNumber
-        {
-            get { return new CBValue<int>(0); }
-            set { }
-        }
-
-        [XmlIgnore, Browsable(false)]
-        public new CBValue<double> ToolDiameter
+        public new CBValue<double> RoughingClearance
         {
             get { return new CBValue<double>(0.0); }
             set { }
         }
 
         [XmlIgnore, Browsable(false)]
-        public new CBValue<ToolProfiles> ToolProfile
+        public new CBValue<Matrix4x4F> Transform
         {
-            get { return new CBValue<ToolProfiles>(); }
-            set { }
+        	get { return new CBValue<Matrix4x4F>(Matrix4x4F.Identity);}
+        	set { }
         }
 
-        //-- styleable properties
-
-        [Category("Cutting Depth"), DefaultValue(typeof(CBValue<double>), "Default"), Description("The 'safe' Z location to return before a rapid to a new location."), DisplayName("Clearance Plane")]
-        public CBValue<double> ClearancePlane
+        //-- mop-specific properties
+        [
+            CBKeyValue,
+            Category("Feedrates"),
+            DefaultValue(typeof(CBValue<double>), "Default"),
+            Description("The feed rate to use when moving. If 0 use rapids (G0)"),
+            DisplayName("Move Feedrate")
+        ]
+        public double Move_feedrate
         {
-        	get { return this._clearance_plane; }
-        	set { this._clearance_plane = value; }
-        }
-
-        [CBAdvancedValue, Category("(General)"), Description("List of drawing objects from which this machine operation is defined.  "), DisplayName("Primitive IDs"), Editor(typeof(EntityListPropertyEditor), typeof(UITypeEditor)), TypeConverter(typeof(IntListConverter)), XmlArray("primitive"), XmlArrayItem("prim", typeof(int))]
-        public int[] PrimitiveIds
-        {
-        	get { return this._primitive_ids; }
-        	set { this._primitive_ids = value; }
+            get { return this._move_feedrate; }
+            set { this._move_feedrate = value; }
         }
 
         //-- read-only About field
@@ -165,8 +147,9 @@ namespace Relocator
             Point3F offset = new Point3F(0,0,0);
             gcg.ApplyGCodeOrigin(ref offset);
             _start = new Point3F(gcg._gcode.X, gcg._gcode.Y, gcg._gcode.Z) - offset;
+            double feedrate = _move_feedrate == 0 ? double.NaN : _move_feedrate;
 
-            double level = Math.Max(_clearance_plane.Cached, gcg._gcode.Z);
+            double level = Math.Max(base.ClearancePlane.Cached, gcg._gcode.Z);
 
             gcg.AppendRapid(gcg._gcode.X, gcg._gcode.Y, level);
 
@@ -174,7 +157,7 @@ namespace Relocator
             {
                 Point3F pt3 = (Point3F)pt;
                 gcg.ApplyGCodeOrigin(ref pt3);
-                gcg.AppendRapid(pt3.X, pt3.Y, level);
+                gcg.AppendMove(double.IsNaN(feedrate) ? "g0" : "g1", pt3.X, pt3.Y, level, feedrate);
             }
 
             MachineOp next_mop = get_next_mop(get_active_mops());
@@ -184,7 +167,7 @@ namespace Relocator
                 Point3F pt3 = pt;
 
                 gcg.ApplyGCodeOrigin(ref pt3);
-                gcg.AppendRapid(pt3.X, pt3.Y, level);
+                gcg.AppendMove(double.IsNaN(feedrate) ? "g0" : "g1", pt3.X, pt3.Y, level, feedrate);
             }
         }
 
@@ -194,10 +177,9 @@ namespace Relocator
             base._CADFile = iv.CADFile;
 
             List<MachineOp> all_mops = get_active_mops();
-            MachineOp prev_mop = get_prev_mop(all_mops);
             MachineOp next_mop = get_next_mop(all_mops);
 
-            double level = _clearance_plane.Cached;
+            double level = base.ClearancePlane.Cached;
 
             if (! _start.IsUndefined)
             {
@@ -285,6 +267,9 @@ namespace Relocator
         {
             List<Point2F> points = new List<Point2F>();
 
+            if (ids == null)
+                return points;
+
             foreach (int id in ids)
             {
                 Entity entity = cad.FindPrimitive(id);
@@ -330,7 +315,7 @@ namespace Relocator
             try
             {
                 _start = Point3F.Undefined;
-                _nodes = import_geometry(base._CADFile, _primitive_ids);
+                _nodes = import_geometry(base._CADFile, base.PrimitiveIds);
 
                 if (base.MachineOpStatus == MachineOpStatus.Unknown)
                     base.MachineOpStatus = MachineOpStatus.OK;
@@ -351,33 +336,22 @@ namespace Relocator
         	return new MOPRelocator(this);
         }
 
-        public MOPRelocator(MOPRelocator src) : base(src)
-        {
-            this.ClearancePlane = src.ClearancePlane;
-            this.PrimitiveIds = src.PrimitiveIds;
-        }
-
-        public MOPRelocator(MOPFromGeometry src) : base(src)
-        {
-            this.ClearancePlane = src.ClearancePlane;
-            this.PrimitiveIds = src.PrimitiveIds;
-        }
 
         public MOPRelocator()
         {
         }
 
-        public MOPRelocator(CADFile cad, ICollection<Entity> plist) : base(cad)
+        public MOPRelocator(MOPFromGeometry src) : base(src)
         {
-        	if (plist == null) return;
+        }
 
-        	List<int> ids = new List<int>();
-        	foreach (Entity e in plist)
-        	{
-        		if (e.ID > 0)
-        			ids.Add(e.ID);
-        	}
-        	this._primitive_ids = ids.ToArray();
+        public MOPRelocator(MOPRelocator src) : base(src)
+        {
+            this.Move_feedrate = src.Move_feedrate;
+        }
+
+        public MOPRelocator(CADFile cad, ICollection<Entity> plist) : base(cad, plist)
+        {
         }
     }
 }
